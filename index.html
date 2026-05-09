@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital HIRADC K3 Fasyankes</title>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        /* Tema Warna K3: Biru (Blue/Sky) dan Oranye/Kuning untuk Bahaya */
+        .tab-active { border-bottom: 4px solid #2563eb; color: #1e3a8a; font-weight: 700; }
+        .tab-inactive { border-bottom: 4px solid transparent; color: #64748b; }
+        .tab-inactive:hover { color: #334155; border-bottom: 4px solid #e2e8f0; }
+        
+        [contenteditable]:empty:before { content: attr(data-placeholder); color: #94a3b8; font-style: italic; }
+        
+        @media print { 
+            body { background-color: white !important; } 
+            .no-print { display: none !important; } 
+            .print-shadow-none { box-shadow: none !important; border: 1px solid #e2e8f0 !important; } 
+            #tab-penjelasan { display: none !important; }
+        }
+        
+        /* Animasi AI Loading */
+        .dot-flashing { position: relative; width: 6px; height: 6px; border-radius: 5px; background-color: #2563eb; color: #2563eb; animation: dot-flashing 1s infinite linear alternate; animation-delay: .5s; }
+        .dot-flashing::before, .dot-flashing::after { content: ''; display: inline-block; position: absolute; top: 0; }
+        .dot-flashing::before { left: -10px; width: 6px; height: 6px; border-radius: 5px; background-color: #2563eb; color: #2563eb; animation: dot-flashing 1s infinite linear alternate; animation-delay: 0s; }
+        .dot-flashing::after { left: 10px; width: 6px; height: 6px; border-radius: 5px; background-color: #2563eb; color: #2563eb; animation: dot-flashing 1s infinite linear alternate; animation-delay: 1s; }
+        @keyframes dot-flashing { 0% { background-color: #2563eb; } 50%, 100% { background-color: #dbeafe; } }
+        
+        .ai-suggested { animation: pulse-blue 1.5s ease-in-out; }
+        @keyframes pulse-blue { 0%, 100% { background-color: white; } 50% { background-color: #eff6ff; } }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen overflow-hidden flex flex-col">
+
+    <div id="main-app" class="flex flex-col h-full w-full overflow-y-auto pb-20">
+        
+        <header class="bg-slate-900 text-white py-6 px-4 shadow-md no-print border-b-4 border-blue-600 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex flex-col">
+                    <h1 class="text-2xl font-extrabold text-blue-400">SIM K3 - Digital HIRADC</h1>
+                    <p class="text-xs text-slate-400 mt-1">Identifikasi Bahaya, Penilaian Risiko & Pengendalian</p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <input type="text" id="facility-name" class="bg-slate-800 border border-slate-700 text-xs px-2 py-1 rounded text-white outline-none focus:border-blue-400" placeholder="Ketik Nama Fasyankes..." value="RS/Puskesmas/Klinik ">
+                    </div>
+                </div>
+                <div class="flex overflow-x-auto gap-1 bg-slate-800 p-1 rounded-lg">
+                    <button onclick="switchTab('penjelasan')" id="btn-tab-penjelasan" class="py-2 px-4 focus:outline-none transition-all tab-active text-xs font-semibold rounded hover:bg-slate-700 hover:text-white">Panduan K3</button>
+                    <button onclick="switchTab('identifikasi')" id="btn-tab-identifikasi" class="py-2 px-4 focus:outline-none transition-all tab-inactive text-xs font-semibold rounded hover:bg-slate-700 hover:text-white">1. Identifikasi Bahaya</button>
+                    <button onclick="switchTab('mitigasi')" id="btn-tab-mitigasi" class="py-2 px-4 focus:outline-none transition-all tab-inactive text-xs font-semibold rounded hover:bg-slate-700 hover:text-white">2. Hierarki Kontrol (Mitigasi)</button>
+                </div>
+            </div>
+        </header>
+
+        <main id="tab-penjelasan" class="max-w-5xl mx-auto px-4 py-8 main-content block">
+            <div class="bg-white rounded-xl shadow-md p-8 border border-slate-200">
+                <h2 class="text-2xl font-bold text-blue-800 mb-6 border-b pb-2 text-center md:text-left">Manajemen Risiko K3 Fasyankes (HIRADC)</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><span>🛡️</span> Apa itu HIRADC?</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed mb-3">
+                            HIRADC <i>(Hazard Identification, Risk Assessment, and Determining Control)</i> adalah dokumen pondasi dari seluruh program Kesehatan dan Keselamatan Kerja (K3).
+                            Tujuannya adalah mengidentifikasi semua potensi bahaya bagi pekerja medis/non-medis, menilai seberapa besar risikonya, lalu menentukan cara mengendalikannya agar tidak terjadi kecelakaan kerja (KAK/PAK).
+                        </p>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-5 rounded-xl border border-blue-200">
+                        <h3 class="font-bold text-blue-800 mb-3 flex items-center gap-2"><span>🪜</span> 5 Hierarki Pengendalian K3</h3>
+                        <ul class="text-xs text-slate-700 space-y-2">
+                            <li><span class="font-bold text-red-600">1. Eliminasi:</span> Menghilangkan sumber bahaya sepenuhnya dari tempat kerja (Paling efektif).</li>
+                            <li><span class="font-bold text-orange-600">2. Substitusi:</span> Mengganti bahan, alat, atau proses berbahaya dengan yang lebih aman. <br><span class="text-[9px] text-slate-500 italic">*(Dalam form isian aplikasi, Eliminasi & Substitusi digabung dalam 1 kolom)*</span></li>
+                            <li><span class="font-bold text-amber-500">3. Rekayasa Teknik:</span> Modifikasi fisik/ruangan/mesin (misal: pasang exhaust, cover mesin).</li>
+                            <li><span class="font-bold text-yellow-600">4. Administrasi:</span> SOP, rambu peringatan, rotasi shift, dan pelatihan K3.</li>
+                            <li><span class="font-bold text-blue-600">5. APD (Alat Pelindung Diri):</span> Helm, sarung tangan, masker (Paling tidak efektif, pertahanan terakhir).</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="text-lg font-bold text-blue-800 mb-4 border-b pb-2">Panduan Nilai PSR (Peluang, Severity, Risiko)</h3>
+                    <p class="text-xs text-slate-600 mb-4">Skor Risiko didapatkan dari perkalian antara <b>Peluang (P)</b> dan <b>Keparahan (S)</b>. Berikut adalah panduan penentuan angkanya:</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div class="border border-slate-200 rounded-lg p-4 bg-white shadow-sm">
+                            <h4 class="font-bold text-blue-700 text-xs mb-3 border-b border-slate-100 pb-1">Nilai Peluang (P) / Probability</h4>
+                            <ul class="text-[11px] text-slate-700 space-y-2">
+                                <li><span class="font-bold text-slate-800 inline-block w-4">1</span> <b>Sangat Jarang:</b> Hampir tidak mungkin terjadi (1x dalam > 5 tahun).</li>
+                                <li><span class="font-bold text-slate-800 inline-block w-4">2</span> <b>Jarang:</b> Mungkin terjadi (1x dalam 1-5 tahun).</li>
+                                <li><span class="font-bold text-slate-800 inline-block w-4">3</span> <b>Kadang-kadang:</b> Bisa terjadi sewaktu-waktu (1x setahun).</li>
+                                <li><span class="font-bold text-slate-800 inline-block w-4">4</span> <b>Sering:</b> Sangat mungkin terjadi (1x sebulan).</li>
+                                <li><span class="font-bold text-slate-800 inline-block w-4">5</span> <b>Sangat Sering:</b> Hampir pasti terjadi (Setiap hari/minggu).</li>
+                            </ul>
+                        </div>
+                        <div class="border border-slate-200 rounded-lg p-4 bg-white shadow-sm">
+                            <h4 class="font-bold text-blue-700 text-xs mb-3 border-b border-slate-100 pb-1">Nilai Keparahan (S) / Severity</h4>
+                            <ul class="text-[11px] text-slate-700 space-y-2">
+                                <li><span class="font-bold text-slate-800 inline-block w-4">1</span> <b>Sangat Ringan:</b> Hanya butuh P3K, tidak mengganggu kerja.</li>
+                                <li><span class="font-bold text-slate-800 inline-block w-4">2</span> <b>Ringan:</b> Butuh medis ringan, tidak ada hari hilang.</li>
+                                <li><span class="font-bold text-slate-800 inline-block w-4">3</span> <b>Sedang:</b> Cedera/Sakit sedang, ada hari hilang / absen kerja.</li>
+                                <li><span class="font-bold text-slate-800 inline-block w-4">4</span> <b>Berat:</b> Cedera berat, cacat permanen, penyakit menular.</li>
+                                <li><span class="font-bold text-slate-800 inline-block w-4">5</span> <b>Bencana:</b> Menyebabkan kematian atau kerusakan fasilitas fatal.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">Matriks Penilaian Risiko K3 (P &times; S = Skor)</h3>
+                    <div class="overflow-x-auto rounded-lg border border-slate-200">
+                        <table class="w-full text-xs text-center border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100">
+                                    <th class="p-2 border">Skor (P &times; S)</th>
+                                    <th class="p-2 border">Tingkat Risiko</th>
+                                    <th class="p-2 border">Tindakan / Warna</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td class="p-2 border font-bold">1 - 4</td><td class="p-2 border">Rendah (Low)</td><td class="p-2 border bg-blue-100 text-blue-800 font-bold">Biru / Hijau (Dapat diterima)</td></tr>
+                                <tr><td class="p-2 border font-bold">5 - 9</td><td class="p-2 border">Sedang (Medium)</td><td class="p-2 border bg-yellow-100 text-yellow-800 font-bold">Kuning (Butuh pantauan)</td></tr>
+                                <tr><td class="p-2 border font-bold">10 - 14</td><td class="p-2 border">Tinggi (High)</td><td class="p-2 border bg-orange-100 text-orange-800 font-bold">Oranye (Butuh tindakan segera)</td></tr>
+                                <tr><td class="p-2 border font-bold">15 - 25</td><td class="p-2 border">Ekstrem (Extreme)</td><td class="p-2 border bg-red-500 text-white font-bold">Merah (Hentikan pekerjaan)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex justify-center mt-6">
+                    <button onclick="switchTab('identifikasi')" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition-all uppercase tracking-widest text-sm active:scale-95">Mulai Identifikasi Bahaya K3 &rarr;</button>
+                </div>
+            </div>
+        </main>
+
+        <main id="tab-identifikasi" class="max-w-7xl w-full mx-auto px-4 py-6 hidden main-content">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 uppercase tracking-tight">1. Identifikasi & Penilaian Risiko Awal</h2>
+                    <p class="text-sm text-slate-500 italic">Mendaftar proses kerja, potensi bahaya, dan skor Inherent Risk.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-200 xl:col-span-1 h-fit sticky top-24 no-print">
+                    <h2 class="font-bold text-slate-800 mb-4 border-b pb-2 uppercase tracking-widest text-xs">Form Identifikasi Bahaya</h2>
+                    
+                    <div class="space-y-4">
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jenis Fasyankes</label>
+                                <select id="k3-facility-type" class="w-full border border-slate-300 rounded p-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer" onchange="updateUnitDropdown()">
+                                    <option value="rs">Rumah Sakit</option>
+                                    <option value="pkm">Puskesmas</option>
+                                    <option value="klinik">Klinik</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Unit / Lokasi</label>
+                                <select id="k3-unit-select" class="w-full border border-slate-300 rounded p-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer" onchange="checkCustomUnit()">
+                                    </select>
+                            </div>
+                        </div>
+                        
+                        <div id="klaster-info-container" class="hidden">
+                            <span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-1 rounded border border-indigo-200 uppercase tracking-wider">
+                                <span class="text-indigo-500">📌</span> <span id="klaster-label">-</span>
+                            </span>
+                        </div>
+
+                        <input type="text" id="k3-unit-text" class="w-full border border-slate-300 rounded p-2 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-400 hidden mt-2" placeholder="Ketik nama unit manual...">
+
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase">Kegiatan / Proses Kerja</label>
+                                <button onclick="generateAIKegiatan()" class="text-[10px] text-blue-700 font-bold hover:text-blue-900 bg-blue-100 px-2 py-0.5 rounded transition-all border border-blue-200 shadow-sm active:scale-95 uppercase tracking-tighter">
+                                    💡 Inspirasi Kegiatan
+                                </button>
+                            </div>
+                            
+                            <div id="ai-kegiatan-container" class="hidden mb-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-inner text-xs">
+                                <div id="ai-loading-kegiatan" class="hidden py-4 flex flex-col items-center justify-center text-center">
+                                    <div class="dot-flashing mb-2"></div>
+                                    <span class="text-[9px] font-bold text-blue-700 animate-pulse mt-2 uppercase">AI Mencari Ide Kegiatan...</span>
+                                </div>
+                                <div id="ai-content-kegiatan" class="hidden">
+                                    <p class="text-[9px] font-bold text-slate-500 uppercase mb-2">Pilih kegiatan rutin di bawah ini:</p>
+                                    <ul id="ai-kegiatan-list" class="space-y-2 mb-2"></ul>
+                                    <div class="flex justify-end mt-2 pt-2 border-t border-blue-100">
+                                        <button onclick="generateAIKegiatan()" class="text-[9px] text-blue-700 font-bold hover:underline tracking-tighter uppercase">🔄 Cari Ide Lain</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <textarea id="k3-kegiatan" rows="2" class="w-full border border-slate-300 rounded p-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-blue-400" placeholder="Pilih ide AI di atas atau ketik manual (Misal: Memasak makanan pasien)"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Kategori Bahaya</label>
+                            <select id="k3-kategori" class="w-full border border-slate-300 rounded p-2 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer font-medium">
+                                <option value="STUCK" class="font-bold text-blue-700 italic" selected>💡 Saya Bingung (AI Cari Lintas Kategori)</option>
+                                <option value="Fisik">Bahaya Fisik (Bising, Jatuh, Suhu, Radiasi)</option>
+                                <option value="Kimia">Bahaya Kimia (Gas, Cairan beracun/korosif)</option>
+                                <option value="Biologi">Bahaya Biologi (Bakteri, Virus, Jarum suntik)</option>
+                                <option value="Ergonomi">Bahaya Ergonomi (Postur salah, Angkat beban)</option>
+                                <option value="Psikososial">Bahaya Psikososial (Stres, Kekerasan, Jam kerja)</option>
+                                <option value="Mekanik">Bahaya Mekanik (Terjepit, Terpotong, Mesin berputar)</option>
+                                <option value="Elektrik">Bahaya Elektrik (Korsleting, Tersengat Listrik)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase">Detail Potensi Bahaya (Hazard)</label>
+                                <button onclick="generateAIBahaya()" id="btn-ai" class="text-[10px] text-blue-700 font-bold hover:text-blue-900 bg-blue-100 px-2 py-0.5 rounded transition-all border border-blue-200 shadow-sm active:scale-95 uppercase tracking-tighter">
+                                    💡 Inspirasi Bahaya
+                                </button>
+                            </div>
+                            
+                            <div id="ai-bahaya-container" class="hidden mb-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-inner text-xs">
+                                <div id="ai-loading-bahaya" class="hidden py-4 flex flex-col items-center justify-center text-center">
+                                    <div class="dot-flashing mb-2"></div>
+                                    <span class="text-[9px] font-bold text-blue-700 animate-pulse mt-2 uppercase">AI Menganalisis Bahaya...</span>
+                                </div>
+                                <div id="ai-content-bahaya" class="hidden">
+                                    <p class="text-[9px] font-bold text-slate-500 uppercase mb-2">Pilih salah satu saran AI di bawah:</p>
+                                    <ul id="ai-bahaya-list" class="space-y-2 mb-2"></ul>
+                                    <div class="flex justify-end mt-2 pt-2 border-t border-blue-100">
+                                        <button onclick="generateAIBahaya()" class="text-[9px] text-blue-700 font-bold hover:underline tracking-tighter uppercase">🔄 Cari Ide Lain</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <textarea id="k3-hazard" rows="2" class="w-full border border-slate-300 rounded p-2 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-400" placeholder="Pilih ide AI di atas atau ketik bahaya spesifik..."></textarea>
+                        </div>
+
+                        <div class="border-t border-slate-200 pt-4 mt-4 space-y-4" id="form-bahaya-detail">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dampak (Bagi Karyawan / Pasien)</label>
+                                <input type="text" id="k3-dampak" class="w-full border border-slate-300 rounded p-2 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-400" placeholder="Misal: Patah tulang, Tertular TBC...">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 bg-blue-50 p-3 rounded-lg border border-blue-100" id="pds-container">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1" title="Seberapa sering terjadi?">Peluang (P) 1-5</label>
+                                    <input type="number" min="1" max="5" id="k3-p" class="w-full border border-slate-300 rounded p-2 text-sm font-bold text-center outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1" title="Seberapa parah dampaknya?">Keparahan (S) 1-5</label>
+                                    <input type="number" min="1" max="5" id="k3-s" class="w-full border border-slate-300 rounded p-2 text-sm font-bold text-center outline-none">
+                                </div>
+                            </div>
+
+                            <button onclick="addHiradcRecord()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg shadow-md uppercase text-sm active:scale-95 transition-all">Simpan ke Daftar Risiko</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="xl:col-span-2 w-full">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-200 mb-6 overflow-hidden flex flex-col print-shadow-none">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                            <h2 class="font-bold text-slate-800 text-sm uppercase tracking-widest">Daftar Risiko Awal (Inherent Risk)</h2>
+                            <button onclick="downloadMasterPDF()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-[10px] font-bold rounded shadow transition-all uppercase tracking-tight flex items-center gap-1 no-print">
+                                ⬇️ Unduh PDF
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-x-auto w-full">
+                            <table class="w-full text-xs text-left border-collapse">
+                                <thead class="bg-slate-100 text-slate-700 border-b-2 border-slate-300 text-[10px] uppercase tracking-wider">
+                                    <tr>
+                                        <th class="p-2 border border-slate-200 min-w-[120px]">Unit & Kegiatan</th>
+                                        <th class="p-2 border border-slate-200 min-w-[150px]">Bahaya & Kategori</th>
+                                        <th class="p-2 border border-slate-200 min-w-[120px]">Dampak</th>
+                                        <th class="p-2 border border-slate-200 text-center w-8">P</th>
+                                        <th class="p-2 border border-slate-200 text-center w-8">S</th>
+                                        <th class="p-2 border border-slate-200 text-center font-bold bg-blue-50 w-12">Skor</th>
+                                        <th class="p-2 border border-slate-200 text-center no-print min-w-[80px]">Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hiradc-table-body" class="divide-y divide-slate-200">
+                                    <tr id="hiradc-empty"><td colspan="7" class="p-12 text-center text-slate-400 italic">Belum ada identifikasi bahaya.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <main id="tab-mitigasi" class="max-w-7xl w-full mx-auto px-4 py-6 hidden main-content">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 uppercase tracking-tight">2. Hierarki Pengendalian (Mitigasi)</h2>
+                    <p class="text-sm text-slate-500 italic">Perumusan kontrol K3 dan penilaian Risiko Sisa (Residual Risk).</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="downloadMasterPDF()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-xs font-bold rounded shadow-md transition-all flex items-center justify-center gap-2 uppercase tracking-tight no-print">
+                        📄 Unduh PDF (Teks)
+                    </button>
+                    <button onclick="downloadEditableExcel()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs font-bold rounded shadow-md transition-all flex items-center justify-center gap-2 uppercase tracking-tight no-print">
+                        📊 Unduh Excel (.xlsx)
+                    </button>
+                </div>
+            </div>
+
+            <div id="mitigasi-form-container" class="bg-blue-50 rounded-xl shadow-sm border border-blue-200 p-6 mb-8 hidden no-print relative">
+                <button onclick="closeMitigasiForm()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-800 font-bold text-xl">&times;</button>
+                
+                <h3 class="font-bold text-blue-900 mb-2 uppercase tracking-widest text-xs border-b border-blue-200 pb-2">Perumusan Pengendalian K3</h3>
+                
+                <div class="mb-4 bg-white p-3 rounded border border-blue-100">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase">Bahaya Terpilih:</p>
+                    <p id="mitigasi-hazard-text" class="text-sm font-semibold text-slate-800 mt-1"></p>
+                    <input type="hidden" id="mitigasi-id-ref">
+                </div>
+
+                <button onclick="generateAIKontrol()" class="w-full text-xs text-white font-bold bg-blue-600 hover:bg-blue-700 py-3 rounded-lg transition-all shadow-md active:scale-95 mb-4 flex items-center justify-center gap-2">
+                    💡 Auto-Generate Hierarki Kontrol (AI)
+                </button>
+                
+                <div id="ai-loading-kontrol" class="hidden py-4 flex flex-col items-center justify-center text-center mb-4">
+                    <div class="dot-flashing mb-2"></div>
+                    <span class="text-[9px] font-bold text-blue-700 animate-pulse mt-2 uppercase">AI Merumuskan Pengendalian...</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <div class="flex items-center mb-1">
+                            <input type="checkbox" id="check-eliminasi" checked class="w-3 h-3 mr-1.5 cursor-pointer accent-blue-600" onchange="toggleMitigasi('eliminasi')">
+                            <label for="check-eliminasi" class="font-bold text-slate-600 text-[10px] uppercase cursor-pointer">1. Eliminasi / Substitusi</label>
+                        </div>
+                        <textarea id="mit-eliminasi" rows="2" class="w-full border border-slate-300 rounded p-2 outline-none focus:ring-1 focus:ring-blue-400 transition-colors" placeholder="Ketik saran eliminasi..."></textarea>
+                    </div>
+                    <div>
+                        <div class="flex items-center mb-1">
+                            <input type="checkbox" id="check-rekayasa" checked class="w-3 h-3 mr-1.5 cursor-pointer accent-blue-600" onchange="toggleMitigasi('rekayasa')">
+                            <label for="check-rekayasa" class="font-bold text-slate-600 text-[10px] uppercase cursor-pointer">2. Rekayasa Teknik</label>
+                        </div>
+                        <textarea id="mit-rekayasa" rows="2" class="w-full border border-slate-300 rounded p-2 outline-none focus:ring-1 focus:ring-blue-400 transition-colors" placeholder="Ketik saran rekayasa..."></textarea>
+                    </div>
+                    <div>
+                        <div class="flex items-center mb-1">
+                            <input type="checkbox" id="check-admin" checked class="w-3 h-3 mr-1.5 cursor-pointer accent-blue-600" onchange="toggleMitigasi('admin')">
+                            <label for="check-admin" class="font-bold text-slate-600 text-[10px] uppercase cursor-pointer">3. Administrasi (SOP/Rambu)</label>
+                        </div>
+                        <textarea id="mit-admin" rows="2" class="w-full border border-slate-300 rounded p-2 outline-none focus:ring-1 focus:ring-blue-400 transition-colors" placeholder="Ketik saran administrasi..."></textarea>
+                    </div>
+                    <div>
+                        <div class="flex items-center mb-1">
+                            <input type="checkbox" id="check-apd" checked class="w-3 h-3 mr-1.5 cursor-pointer accent-blue-600" onchange="toggleMitigasi('apd')">
+                            <label for="check-apd" class="font-bold text-slate-600 text-[10px] uppercase cursor-pointer">4. APD (Alat Pelindung Diri)</label>
+                        </div>
+                        <textarea id="mit-apd" rows="2" class="w-full border border-slate-300 rounded p-2 outline-none focus:ring-1 focus:ring-blue-400 transition-colors" placeholder="Ketik saran APD..."></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-blue-200 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div class="md:col-span-2">
+                        <label class="block font-bold text-slate-600 mb-1 text-[10px] uppercase">Penanggung Jawab (PIC) & Target Waktu</label>
+                        <input type="text" id="mit-pic" class="w-full border border-slate-300 rounded p-2 outline-none focus:ring-1 focus:ring-blue-400 text-xs" placeholder="Misal: Ka. IPSRS (1 Bulan)">
+                    </div>
+                    <div class="bg-white p-2 rounded border border-blue-100 flex items-center justify-between col-span-2 md:col-span-2">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase mr-2">Target Skor Baru:</span>
+                        <div class="flex gap-2 items-center">
+                            <input type="number" min="1" max="5" id="mit-p" placeholder="P" class="w-12 border border-slate-300 rounded p-1 text-center font-bold text-xs outline-none">
+                            <span>&times;</span>
+                            <input type="number" min="1" max="5" id="mit-s" placeholder="S" class="w-12 border border-slate-300 rounded p-1 text-center font-bold text-xs outline-none">
+                        </div>
+                        <button onclick="saveMitigation()" class="bg-slate-800 text-white font-bold px-4 py-2 rounded text-xs ml-2 hover:bg-slate-900 transition-all uppercase">Simpan</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 print-shadow-none overflow-hidden">
+                <div class="p-4 border-b border-slate-200 bg-slate-50">
+                    <h3 class="font-bold text-slate-800 text-sm uppercase tracking-widest">Tabel Lengkap HIRADC (Residual Risk)</h3>
+                </div>
+                <div class="overflow-x-auto w-full p-4">
+                    <table class="w-full text-[10px] text-left border-collapse border border-slate-300 min-w-[1000px]">
+                        <thead class="bg-slate-800 text-white uppercase tracking-wider">
+                            <tr>
+                                <th class="p-2 border border-slate-600" rowspan="2">Unit & Kegiatan</th>
+                                <th class="p-2 border border-slate-600" rowspan="2">Hazard & Dampak</th>
+                                <th class="p-2 border border-slate-600 text-center bg-slate-700" colspan="3">Risiko Awal</th>
+                                <th class="p-2 border border-slate-600 text-center bg-blue-900" colspan="4">Hierarki Pengendalian K3</th>
+                                <th class="p-2 border border-slate-600 text-center bg-slate-700" colspan="3">Risiko Sisa</th>
+                                <th class="p-2 border border-slate-600" rowspan="2">PIC & Waktu</th>
+                            </tr>
+                            <tr>
+                                <th class="p-1 border border-slate-600 text-center bg-slate-600 w-6">P</th>
+                                <th class="p-1 border border-slate-600 text-center bg-slate-600 w-6">S</th>
+                                <th class="p-1 border border-slate-600 text-center bg-slate-600 w-8">R</th>
+                                <th class="p-2 border border-slate-600 bg-blue-800 text-center">Eliminasi / Substitusi</th>
+                                <th class="p-2 border border-slate-600 bg-blue-800 text-center">Rekayasa Teknik</th>
+                                <th class="p-2 border border-slate-600 bg-blue-800 text-center">Administrasi</th>
+                                <th class="p-2 border border-slate-600 bg-blue-800 text-center">APD</th>
+                                <th class="p-1 border border-slate-600 text-center bg-slate-600 w-6">P</th>
+                                <th class="p-1 border border-slate-600 text-center bg-slate-600 w-6">S</th>
+                                <th class="p-1 border border-slate-600 text-center bg-slate-600 w-8">R</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mitigasi-table-body" class="divide-y divide-slate-200 bg-white text-slate-800 font-medium">
+                            <tr id="mitigasi-empty"><td colspan="13" class="p-8 text-center text-slate-400 italic">Lakukan asesmen di Tab 1, lalu klik "Buat Kontrol" untuk menampilkan data di sini.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="custom-alert" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center backdrop-blur-sm no-print">
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 transform transition-all text-center">
+            <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-amber-600 text-2xl">⚠️</span>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 mb-2">Perhatian</h3>
+            <p id="custom-alert-message" class="text-sm text-slate-600 mb-6"></p>
+            <button onclick="closeCustomAlert()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg w-full transition-all">Tutup</button>
+        </div>
+    </div>
+
+    <script>
+        // Fungsi Modal
+        function showCustomAlert(msg) {
+            document.getElementById('custom-alert-message').innerText = msg;
+            document.getElementById('custom-alert').classList.remove('hidden');
+        }
+        function closeCustomAlert() {
+            document.getElementById('custom-alert').classList.add('hidden');
+        }
+
+        // --- INTEGRASI DASHBOARD SEHATI AI ---
+        let apiKey = new URLSearchParams(window.location.search).get('key') || "";
+        let aiModel = new URLSearchParams(window.location.search).get('model') || "gemini-2.5-flash-preview-09-2025";
+        let systemContext = "";
+
+        window.addEventListener('message', (event) => {
+            if (!event.data || !event.data.type) return;
+            if (event.data.type === 'UPDATE_CONFIG') {
+                apiKey = event.data.key;
+                if(event.data.model) aiModel = event.data.model;
+                if(event.data.contextReference) systemContext = event.data.contextReference;
+            }
+            if (event.data.type === 'STOP_RETRY') {
+                showCustomAlert("Sistem AI Dihentikan Sementara: Semua Slot API Key gagal. Periksa limit/kuota di Dashboard.");
+            }
+        });
+        window.parent.postMessage({ type: 'REQUEST_CONFIG' }, '*');
+        // --------------------------------------
+
+        // Global State
+        let hiradcRecords = [];
+
+        // Data Unit Berdasarkan Fasyankes (Clean Names for Logic)
+        const unitOptions = {
+            rs: [
+                "Instalasi Gawat Darurat (IGD)",
+                "Rawat Jalan / Poliklinik Spesialis",
+                "Rawat Jalan / Poliklinik Gigi & Mulut",
+                "Rawat Inap (Bangsal Umum)",
+                "Rawat Inap (Isolasi / Infeksius)",
+                "Kamar Operasi (OK) / Bedah Sentral",
+                "Ruang Bersalin (VK)",
+                "Perinatologi / Neonatologi",
+                "Intensive Care Unit (ICU)",
+                "NICU / PICU",
+                "Hemodialisa (Cuci Darah)",
+                "Cath Lab",
+                "Rehabilitasi Medik / Fisioterapi",
+                "Instalasi Radiologi / Imaging",
+                "Laboratorium / Patologi Klinik",
+                "Patologi Anatomi",
+                "Instalasi Farmasi / Gudang Obat",
+                "Instalasi Gizi / Dapur Utama",
+                "Bank Darah RS (BDRS) / Transfusi Darah",
+                "Rekam Medis & Pendaftaran",
+                "CSSD (Sterilisasi Sentral)",
+                "Laundry / Pencucian Linen",
+                "Sanitasi / Pengelolaan Limbah (TPS B3/IPAL)",
+                "IPSRS / Bengkel Fasilitas RS",
+                "Kamar Jenazah / Pemulasaraan",
+                "Ambulans & Transportasi Medis",
+                "Gas Medis / Sentral Oksigen",
+                "Keamanan / Security / Parkir",
+                "Cleaning Service / Tata Graha",
+                "Administrasi / Manajemen / Direksi",
+                "K3RS / Komite PPI / Mutu"
+            ],
+            pkm: [
+                { unit: "Manajemen / Tata Usaha", cluster: "Klaster 1 (Manajemen)" },
+                { unit: "Poli KIA / Kesehatan Ibu & Anak", cluster: "Klaster 2 (Ibu & Anak)" },
+                { unit: "Poli KB / Keluarga Berencana", cluster: "Klaster 2 (Ibu & Anak)" },
+                { unit: "Poli MTBS / Poli Anak", cluster: "Klaster 2 (Ibu & Anak)" },
+                { unit: "Ruang Bersalin / PONED", cluster: "Klaster 2 (Ibu & Anak)" },
+                { unit: "Poli Umum", cluster: "Klaster 3 (Usia Dewasa & Lansia)" },
+                { unit: "Poli Lansia", cluster: "Klaster 3 (Usia Dewasa & Lansia)" },
+                { unit: "Poli TB / DOTS", cluster: "Klaster 4 (Penyakit Menular)" },
+                { unit: "Poli Infeksi / Kusta", cluster: "Klaster 4 (Penyakit Menular)" },
+                { unit: "UGD / Ruang Tindakan", cluster: "Lintas Klaster" },
+                { unit: "Rawat Inap Puskesmas", cluster: "Lintas Klaster" },
+                { unit: "Poli Gigi & Mulut", cluster: "Lintas Klaster" },
+                { unit: "Laboratorium", cluster: "Lintas Klaster" },
+                { unit: "Farmasi / Apotek", cluster: "Lintas Klaster" },
+                { unit: "Loket Pendaftaran / Rekam Medis", cluster: "Lintas Klaster" },
+                { unit: "Ruang Konseling (Gizi, Kesling, Promkes)", cluster: "Lintas Klaster" },
+                { unit: "Ruang Sterilisasi Alat", cluster: "Lintas Klaster" },
+                { unit: "Dapur / Gizi Puskesmas", cluster: "Lintas Klaster" },
+                { unit: "Laundry / Pencucian Linen", cluster: "Lintas Klaster" },
+                { unit: "Pengelolaan Limbah / Kesling / TPS B3", cluster: "Lintas Klaster" },
+                { unit: "Ambulans / Puskesmas Keliling", cluster: "Lintas Klaster" },
+                { unit: "Kegiatan Luar Gedung: Posyandu / BIAS", cluster: "UKM (Luar Gedung)" },
+                { unit: "Kegiatan Luar Gedung: Perkesmas", cluster: "UKM (Luar Gedung)" },
+                { unit: "Kegiatan Luar Gedung: Fogging / Inspeksi", cluster: "UKM (Luar Gedung)" },
+                { unit: "Kegiatan Luar Gedung: Penyuluhan Masyarakat", cluster: "UKM (Luar Gedung)" }
+            ],
+            klinik: [
+                "Loket Pendaftaran / Kasir",
+                "Rekam Medis",
+                "Poli Pemeriksaan Umum",
+                "Poli Pemeriksaan Gigi & Mulut",
+                "Poli KIA / Keluarga Berencana",
+                "Poli Spesialis Penyakit Dalam (Klinik Utama)",
+                "Poli Spesialis Anak (Klinik Utama)",
+                "Poli Spesialis Obgyn (Klinik Utama)",
+                "Ruang Tindakan / UGD Klinik",
+                "Ruang Bersalin / Pelayanan Melahirkan",
+                "Ruang Observasi / Recovery Room",
+                "Ruang Rawat Inap (Klinik Rawat Inap)",
+                "Instalasi Farmasi / Penyerahan Obat",
+                "Gudang Obat / Alkes",
+                "Laboratorium Klinik Dasar",
+                "Ruang Sterilisasi Alat Medis",
+                "Pengelolaan Limbah / TPS B3",
+                "Cleaning Service / Tata Graha",
+                "Manajemen / Tata Usaha",
+                "Fasilitas Umum (Ruang Tunggu, Toilet)",
+                "Keamanan / Parkir / Security",
+                "Ambulans Klinik"
+            ]
+        };
+
+        // Fungsi Update Dropdown Unit (Dinamis dengan Nomor Urut)
+        function updateUnitDropdown() {
+            const type = document.getElementById('k3-facility-type').value;
+            const select = document.getElementById('k3-unit-select');
+            const customText = document.getElementById('k3-unit-text');
+            const klasterContainer = document.getElementById('klaster-info-container');
+
+            select.innerHTML = '<option value="">-- Pilih Unit Kerja --</option>';
+            if(klasterContainer) klasterContainer.classList.add('hidden'); 
+            
+            if(unitOptions[type]) {
+                unitOptions[type].forEach((u, index) => {
+                    // Jika tipe data adalah Object (Untuk PKM yang punya informasi Klaster)
+                    if (typeof u === 'object') {
+                        // Nilai (value) hanya mengambil string unit yang bersih (Tanpa angka dan nama klaster)
+                        select.innerHTML += `<option value="${u.unit}" data-klaster="${u.cluster}">${index + 1}. ${u.unit}</option>`;
+                    } else {
+                        // Untuk RS & Klinik yang berupa array string biasa
+                        select.innerHTML += `<option value="${u}">${index + 1}. ${u}</option>`;
+                    }
+                });
+            }
+            
+            select.innerHTML += '<option value="Kustom" class="font-bold text-blue-700">➜ Ketik Manual Unit Lainnya...</option>';
+            
+            customText.classList.add('hidden');
+            customText.value = '';
+        }
+
+        function checkCustomUnit() {
+            const select = document.getElementById('k3-unit-select');
+            const customText = document.getElementById('k3-unit-text');
+            const klasterContainer = document.getElementById('klaster-info-container');
+            const klasterLabel = document.getElementById('klaster-label');
+
+            if(select.value === 'Kustom') {
+                customText.classList.remove('hidden');
+                if(klasterContainer) klasterContainer.classList.add('hidden');
+            } else {
+                customText.classList.add('hidden');
+                
+                // Periksa atribut data-klaster dari opsi yang dipilih
+                if(select.selectedIndex > 0) {
+                    const selectedOption = select.options[select.selectedIndex];
+                    const klasterInfo = selectedOption.getAttribute('data-klaster');
+                    
+                    if (klasterInfo && klasterContainer && klasterLabel) {
+                        klasterLabel.innerText = klasterInfo;
+                        klasterContainer.classList.remove('hidden');
+                    } else if (klasterContainer) {
+                        klasterContainer.classList.add('hidden');
+                    }
+                } else if (klasterContainer) {
+                    klasterContainer.classList.add('hidden');
+                }
+            }
+        }
+
+        // Utilities
+        function switchTab(tabId) {
+            document.querySelectorAll('main.main-content').forEach(m => m.classList.add('hidden'));
+            const target = document.getElementById(`tab-${tabId}`);
+            if(target) target.classList.remove('hidden');
+            
+            const btns = ['btn-tab-penjelasan', 'btn-tab-identifikasi', 'btn-tab-mitigasi'];
+            btns.forEach(b => {
+                const el = document.getElementById(b);
+                if (el) {
+                    if (b === `btn-tab-${tabId}`) el.className = 'py-2 px-4 focus:outline-none transition-all tab-active text-xs font-bold rounded hover:bg-slate-700 hover:text-white';
+                    else el.className = 'py-2 px-4 focus:outline-none transition-all tab-inactive text-xs font-semibold rounded hover:bg-slate-700 hover:text-white';
+                }
+            });
+            window.scrollTo(0,0);
+        }
+
+        function escapeJS(str) {
+            if (!str) return '';
+            return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '');
+        }
+
+        function cleanJSON(text) {
+            if (!text) return '';
+            return text.replace(new RegExp('```json', 'gi'), '').replace(new RegExp('```', 'g'), '').trim();
+        }
+
+        async function fetchWithRetry(url, options, retries = 5, backoff = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const res = await fetch(url, options);
+                    if (res.ok) return res;
+                } catch (e) {}
+                await new Promise(r => setTimeout(r, backoff * Math.pow(2, i)));
+            }
+            throw new Error("Gagal terhubung ke API AI");
+        }
+
+        function getRiskColor(score) {
+            if(score >= 15) return 'bg-red-500 text-white shadow-sm';
+            if(score >= 10) return 'bg-orange-400 text-white shadow-sm';
+            if(score >= 5) return 'bg-yellow-300 text-yellow-900';
+            return 'bg-blue-100 text-blue-800';
+        }
+
+        // ========================== FUNGSI INSPIRASI KEGIATAN AI ==========================
+        async function generateAIKegiatan() {
+            let unit = document.getElementById('k3-unit-select').value;
+            if(unit === 'Kustom') unit = document.getElementById('k3-unit-text').value.trim();
+            
+            const fasyankesDropdown = document.getElementById('k3-facility-type');
+            const fasyankesType = fasyankesDropdown.options[fasyankesDropdown.selectedIndex].text;
+
+            if(!unit) {
+                showCustomAlert("Pilih atau ketik Unit/Lokasi Kerja terlebih dahulu agar AI memahami konteksnya.");
+                return;
+            }
+
+            const container = document.getElementById('ai-kegiatan-container');
+            const loading = document.getElementById('ai-loading-kegiatan');
+            const content = document.getElementById('ai-content-kegiatan');
+            const list = document.getElementById('ai-kegiatan-list');
+
+            container.classList.remove('hidden');
+            loading.classList.remove('hidden');
+            content.classList.add('hidden');
+            list.innerHTML = '';
+
+            let prompt = `Saya sedang menyusun dokumen K3 HIRADC di fasyankes tipe ${fasyankesType}.
+Unit Kerja yang dipilih: "${unit}"
+
+Berikan 4 contoh kegiatan atau proses kerja rutin harian yang biasa dilakukan oleh petugas/staf di unit tersebut. Buatlah kegiatan yang spesifik dan berisiko (misalnya untuk ambulans: mengemudi kecepatan tinggi, mengangkat pasien).
+Keluarkan HANYA dalam format JSON array seperti ini:
+[
+  { "kegiatan": "deskripsi kegiatan secara spesifik, misal: Melakukan hecting luka" }
+]`;
+
+            if (systemContext) prompt = `REFERENSI ATURAN K3:\n${systemContext}\n\nTUGAS:\n${prompt}`;
+
+            try {
+                let ideas = [];
+                const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" }})
+                });
+                const data = await response.json();
+                if(data.error) throw new Error(data.error.message);
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if(!text) throw new Error("No data");
+                ideas = JSON.parse(cleanJSON(text));
+
+                ideas.forEach(item => {
+                    const escKegiatan = escapeJS(item.kegiatan);
+                    list.innerHTML += `
+                        <li class="cursor-pointer bg-white p-2 rounded border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-2" onclick="selectAIKegiatan('${escKegiatan}')">
+                            <span class="text-blue-500 font-bold">▶</span>
+                            <span class="font-medium text-slate-700 leading-tight">${item.kegiatan}</span>
+                        </li>`;
+                });
+                
+                loading.classList.add('hidden');
+                content.classList.remove('hidden');
+                window.parent.postMessage({ type: 'API_SUCCESS' }, '*');
+
+            } catch (e) {
+                console.error("API Error, using fallback:", e);
+                window.parent.postMessage({ type: 'API_ERROR', code: e.message }, '*');
+                
+                showCustomAlert("Gagal memuat saran AI (Limit API). Sistem menggunakan mode simulasi.");
+                
+                // Fallback Simulasi
+                let ideas = [
+                    { kegiatan: "Melakukan anamnesis dan pemeriksaan fisik pasien (Simulasi)" },
+                    { kegiatan: "Membersihkan ruangan dan membuang limbah infeksius (Simulasi)" },
+                    { kegiatan: "Mengangkat/memindahkan barang berat atau pasien (Simulasi)" }
+                ];
+
+                ideas.forEach(item => {
+                    const escKegiatan = escapeJS(item.kegiatan);
+                    list.innerHTML += `
+                        <li class="cursor-pointer bg-white p-2 rounded border border-blue-200 hover:bg-yellow-100 transition-colors flex items-center gap-2" onclick="selectAIKegiatan('${escKegiatan}')">
+                            <span class="text-orange-500 font-bold">⚠️</span>
+                            <span class="font-medium text-slate-700 leading-tight">${item.kegiatan}</span>
+                        </li>`;
+                });
+
+                loading.classList.add('hidden');
+                content.classList.remove('hidden');
+            }
+        }
+
+        function selectAIKegiatan(kegiatan) {
+            document.getElementById('k3-kegiatan').value = kegiatan;
+            document.getElementById('ai-kegiatan-container').classList.add('hidden');
+            
+            const textArea = document.getElementById('k3-kegiatan');
+            textArea.classList.add('bg-blue-100');
+            setTimeout(() => textArea.classList.remove('bg-blue-100'), 1500);
+        }
+
+        // ========================== FUNGSI IDENTIFIKASI BAHAYA ==========================
+        async function generateAIBahaya() {
+            let unit = document.getElementById('k3-unit-select').value;
+            if(unit === 'Kustom') unit = document.getElementById('k3-unit-text').value.trim();
+            
+            const kegiatan = document.getElementById('k3-kegiatan').value.trim();
+            const cat = document.getElementById('k3-kategori').value;
+            
+            if(!unit || !kegiatan) {
+                showCustomAlert("Mohon isi Unit/Lokasi Kerja dan Kegiatan/Proses Kerja terlebih dahulu agar AI memahami konteksnya.");
+                return;
+            }
+
+            const container = document.getElementById('ai-bahaya-container');
+            const loading = document.getElementById('ai-loading-bahaya');
+            const content = document.getElementById('ai-content-bahaya');
+            const list = document.getElementById('ai-bahaya-list');
+
+            container.classList.remove('hidden');
+            loading.classList.remove('hidden');
+            content.classList.add('hidden');
+            list.innerHTML = '';
+
+            let kategoriText = cat === "STUCK" ? "berbagai kategori (lintas kategori)" : `kategori bahaya ${cat}`;
+
+            let prompt = `Saya sedang menyusun dokumen K3 HIRADC di fasyankes.
+Unit Kerja: "${unit}"
+Proses/Kegiatan: "${kegiatan}"
+
+Berdasarkan kegiatan di atas, berikan 3 potensi bahaya K3 yang spesifik dan masuk akal untuk ${kategoriText}. Usulkan juga skor Peluang (P, 1-5) dan Keparahan (S, 1-5) jika kejadian tersebut belum dikendalikan.
+Keluarkan HANYA dalam format JSON array seperti ini:
+[
+  { "kategori": "Pilih: Fisik/Kimia/Biologi/Ergonomi/Psikososial/Mekanik/Elektrik", "hazard": "deskripsi bahaya secara spesifik", "dampak": "dampak cedera/penyakitnya", "p": 3, "s": 4 }
+]`;
+            
+            if (systemContext) prompt = `REFERENSI ATURAN K3:\n${systemContext}\n\nTUGAS:\n${prompt}`;
+
+            try {
+                let ideas = [];
+                const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" }})
+                });
+                const data = await response.json();
+                if(data.error) throw new Error(data.error.message);
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if(!text) throw new Error("No data");
+                ideas = JSON.parse(cleanJSON(text));
+
+                ideas.forEach(item => {
+                    const escHazard = escapeJS(item.hazard);
+                    const escDampak = escapeJS(item.dampak);
+                    const escKat = escapeJS(item.kategori);
+                    
+                    list.innerHTML += `
+                        <li class="cursor-pointer bg-white p-2 rounded border border-blue-200 hover:bg-blue-100 transition-colors flex flex-col" onclick="selectAIBahaya('${escKat}', '${escHazard}', '${escDampak}', ${item.p}, ${item.s})">
+                            <span class="font-bold text-blue-800 leading-tight mb-1">⚡ ${item.hazard}</span>
+                            <span class="text-[10px] text-slate-600">Dampak: ${item.dampak}</span>
+                            <span class="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Kategori: ${item.kategori} | Skor: P${item.p} S${item.s}</span>
+                        </li>`;
+                });
+                
+                loading.classList.add('hidden');
+                content.classList.remove('hidden');
+                window.parent.postMessage({ type: 'API_SUCCESS' }, '*');
+
+            } catch (e) {
+                console.error("API Error, using fallback:", e);
+                window.parent.postMessage({ type: 'API_ERROR', code: e.message }, '*');
+                
+                showCustomAlert("Gagal memuat saran AI (Limit API). Sistem menggunakan mode simulasi.");
+                
+                // Fallback Simulasi
+                let ideas = [
+                    { kategori: "Biologi", hazard: "Terpapar cipratan darah atau tertusuk jarum suntik bekas (Simulasi Tanpa API)", dampak: "Infeksi penyakit menular (Hepatitis, HIV)", p: 4, s: 4 },
+                    { kategori: "Ergonomi", hazard: "Postur tubuh membungkuk berulang kali (Simulasi Tanpa API)", dampak: "Nyeri punggung bawah (Low Back Pain)", p: 5, s: 2 },
+                    { kategori: "Elektrik", hazard: "Kabel alat medis terkelupas dekat sumber air (Simulasi Tanpa API)", dampak: "Tersengat arus listrik (Luka bakar/henti jantung)", p: 3, s: 5 }
+                ];
+
+                ideas.forEach(item => {
+                    const escHazard = escapeJS(item.hazard);
+                    const escDampak = escapeJS(item.dampak);
+                    const escKat = escapeJS(item.kategori);
+                    
+                    list.innerHTML += `
+                        <li class="cursor-pointer bg-white p-2 rounded border border-blue-200 hover:bg-yellow-100 transition-colors flex flex-col" onclick="selectAIBahaya('${escKat}', '${escHazard}', '${escDampak}', ${item.p}, ${item.s})">
+                            <span class="font-bold text-blue-800 leading-tight mb-1">⚠️ ${item.hazard}</span>
+                            <span class="text-[10px] text-slate-600">Dampak: ${item.dampak}</span>
+                            <span class="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Kategori: ${item.kategori} | Skor: P${item.p} S${item.s}</span>
+                        </li>`;
+                });
+
+                loading.classList.add('hidden');
+                content.classList.remove('hidden');
+            }
+        }
+
+        function selectAIBahaya(kategori, hazard, dampak, p, s) {
+            const selKat = document.getElementById('k3-kategori');
+            for(let i=0; i<selKat.options.length; i++) {
+                if(selKat.options[i].value === kategori || selKat.options[i].text.includes(kategori)) {
+                    selKat.selectedIndex = i; break;
+                }
+            }
+            
+            document.getElementById('k3-hazard').value = hazard;
+            document.getElementById('k3-dampak').value = dampak;
+            document.getElementById('k3-p').value = p;
+            document.getElementById('k3-s').value = s;
+            
+            document.getElementById('ai-bahaya-container').classList.add('hidden');
+            
+            const formSection = document.getElementById('form-bahaya-detail');
+            formSection.classList.add('ai-suggested');
+            setTimeout(() => formSection.classList.remove('ai-suggested'), 1500);
+        }
+
+        function addHiradcRecord() {
+            let unit = document.getElementById('k3-unit-select').value;
+            if(unit === 'Kustom') unit = document.getElementById('k3-unit-text').value.trim();
+            
+            const kegiatan = document.getElementById('k3-kegiatan').value.trim();
+            const kategori = document.getElementById('k3-kategori').value;
+            const hazard = document.getElementById('k3-hazard').value;
+            const dampak = document.getElementById('k3-dampak').value;
+            const p = parseInt(document.getElementById('k3-p').value);
+            const s = parseInt(document.getElementById('k3-s').value);
+
+            if(!unit) {
+                showCustomAlert("Pilih atau ketik Unit Kerja!");
+                return;
+            }
+
+            if(kategori === "STUCK") {
+                showCustomAlert("Silakan pilih Kategori Bahaya yang spesifik terlebih dahulu sebelum menyimpan!");
+                return;
+            }
+
+            if(!hazard || isNaN(p) || isNaN(s)) {
+                showCustomAlert("Mohon lengkapi Detail Bahaya dan Skor (P/S) terlebih dahulu!");
+                return;
+            }
+
+            const newRecord = {
+                id: Date.now(),
+                unit, kegiatan, kategori, hazard, dampak, p, s, score: p*s,
+                mitigasi: null // Akan diisi di Tab 2
+            };
+
+            hiradcRecords.push(newRecord);
+            
+            document.getElementById('k3-hazard').value = '';
+            document.getElementById('k3-dampak').value = '';
+            renderTables();
+        }
+
+        function renderTables() {
+            const tbody1 = document.getElementById('hiradc-table-body');
+            const tbody2 = document.getElementById('mitigasi-table-body');
+            
+            tbody1.innerHTML = '';
+            tbody2.innerHTML = '';
+
+            if (hiradcRecords.length === 0) {
+                tbody1.innerHTML = `<tr id="hiradc-empty"><td colspan="7" class="p-12 text-center text-slate-400 italic">Belum ada identifikasi bahaya.</td></tr>`;
+                tbody2.innerHTML = `<tr id="mitigasi-empty"><td colspan="13" class="p-8 text-center text-slate-400 italic">Lakukan asesmen di Tab 1 terlebih dahulu.</td></tr>`;
+                return;
+            }
+
+            // Urutkan berdasarkan skor tertinggi (Risiko Ekstrem di atas)
+            hiradcRecords.sort((a, b) => b.score - a.score);
+
+            hiradcRecords.forEach((r) => {
+                const colorClass = getRiskColor(r.score);
+                
+                // TABEL 1: IDENTIFIKASI
+                tbody1.innerHTML += `
+                    <tr class="hover:bg-slate-50 border-b border-slate-200">
+                        <td class="p-2 border border-slate-200 leading-tight">
+                            <span class="block font-bold text-slate-700">${r.kegiatan}</span>
+                            <span class="text-[9px] text-slate-400">${r.unit}</span>
+                        </td>
+                        <td class="p-2 border border-slate-200 leading-tight">
+                            <span class="block text-[9px] font-bold text-blue-600 uppercase tracking-tighter mb-0.5">${r.kategori}</span>
+                            ${r.hazard}
+                        </td>
+                        <td class="p-2 border border-slate-200 italic text-slate-600">${r.dampak}</td>
+                        <td class="p-2 border border-slate-200 text-center font-bold text-slate-600">${r.p}</td>
+                        <td class="p-2 border border-slate-200 text-center font-bold text-slate-600">${r.s}</td>
+                        <td class="p-2 border border-slate-200 text-center font-bold ${colorClass} rounded-sm">${r.score}</td>
+                        <td class="p-2 border border-slate-200 text-center no-print">
+                            <button onclick="openMitigasiForm(${r.id})" class="bg-blue-600 text-white w-full py-1 rounded text-[9px] font-bold shadow hover:bg-blue-700 uppercase tracking-tighter mb-1">Buat Kontrol</button>
+                            <button onclick="deleteRecord(${r.id})" class="text-red-500 hover:underline text-[9px] font-bold uppercase tracking-tighter w-full block text-center">Hapus</button>
+                        </td>
+                    </tr>
+                `;
+
+                // TABEL 2: MITIGASI (FULL HIRADC)
+                let mit = r.mitigasi;
+                let resP = mit ? mit.p : "-";
+                let resS = mit ? mit.s : "-";
+                let resScore = mit ? mit.score : "-";
+                let resColor = mit ? getRiskColor(mit.score) : "";
+
+                // Render gaya teks abu-abu jika "Tidak aplikatif"
+                const formatMitText = (teks) => {
+                    if (!teks) return 'Belum diatur';
+                    if (teks.toLowerCase().includes('tidak aplikatif')) return `<span class="text-slate-400 italic">${teks}</span>`;
+                    return teks;
+                };
+
+                tbody2.innerHTML += `
+                    <tr class="hover:bg-slate-50 border-b border-slate-200 align-top">
+                        <td class="p-2 border border-slate-300 leading-tight">
+                            <span class="block font-bold text-slate-700">${r.kegiatan}</span>
+                            <span class="text-[9px] text-slate-400">${r.unit}</span>
+                        </td>
+                        <td class="p-2 border border-slate-300 leading-tight">
+                            <span class="block text-[9px] font-bold text-blue-600 uppercase tracking-tighter mb-0.5">${r.kategori}</span>
+                            <span class="font-medium">${r.hazard}</span><br>
+                            <span class="text-[9px] italic text-slate-500">Dampak: ${r.dampak}</span>
+                        </td>
+                        <td class="p-2 border border-slate-300 text-center bg-slate-50">${r.p}</td>
+                        <td class="p-2 border border-slate-300 text-center bg-slate-50">${r.s}</td>
+                        <td class="p-2 border border-slate-300 text-center font-bold ${colorClass}">${r.score}</td>
+                        
+                        <td class="p-2 border border-slate-300 text-[9px] whitespace-pre-wrap">${formatMitText(mit?.eliminasi)}</td>
+                        <td class="p-2 border border-slate-300 text-[9px] whitespace-pre-wrap">${formatMitText(mit?.rekayasa)}</td>
+                        <td class="p-2 border border-slate-300 text-[9px] whitespace-pre-wrap">${formatMitText(mit?.admin)}</td>
+                        <td class="p-2 border border-slate-300 text-[9px] whitespace-pre-wrap">${formatMitText(mit?.apd)}</td>
+                        
+                        <td class="p-2 border border-slate-300 text-center bg-slate-50">${resP}</td>
+                        <td class="p-2 border border-slate-300 text-center bg-slate-50">${resS}</td>
+                        <td class="p-2 border border-slate-300 text-center font-bold ${resColor}">${resScore}</td>
+                        <td class="p-2 border border-slate-300 text-[9px] font-bold text-slate-600">${mit ? mit.pic : '-'}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function deleteRecord(id) {
+            hiradcRecords = hiradcRecords.filter(r => r.id !== id);
+            renderTables();
+        }
+
+        // ========================== FUNGSI MITIGASI / HIERARKI KONTROL ==========================
+        function toggleMitigasi(type) {
+            const isChecked = document.getElementById(`check-${type}`).checked;
+            const textarea = document.getElementById(`mit-${type}`);
+            if (!isChecked) {
+                textarea.disabled = true;
+                textarea.classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
+                // Jangan kosongkan isinya, agar alasan AI tetap terbaca
+                if (!textarea.value || textarea.value.trim() === "") {
+                    textarea.value = "Tidak aplikatif.";
+                }
+            } else {
+                textarea.disabled = false;
+                textarea.classList.remove('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
+                // Jika isinya mengandung "Tidak aplikatif", kosongkan saat dicentang ulang
+                if (textarea.value.toLowerCase().includes("tidak aplikatif")) {
+                    textarea.value = "";
+                }
+            }
+        }
+
+        function setCheckboxState(type, val) {
+            const checkbox = document.getElementById(`check-${type}`);
+            const textarea = document.getElementById(`mit-${type}`);
+            
+            textarea.value = val || "";
+            
+            // Jika kosong atau AI bilang tidak aplikatif, matikan centangnya
+            if (!val || val.toLowerCase().includes("tidak aplikatif") || val === "-") {
+                checkbox.checked = false;
+                if(!textarea.value || textarea.value === "-") textarea.value = "Tidak aplikatif.";
+            } else {
+                checkbox.checked = true;
+            }
+            toggleMitigasi(type);
+        }
+
+        function openMitigasiForm(id) {
+            switchTab('mitigasi');
+            const record = hiradcRecords.find(r => r.id === id);
+            if(!record) return;
+
+            document.getElementById('mitigasi-form-container').classList.remove('hidden');
+            document.getElementById('mitigasi-id-ref').value = id;
+            document.getElementById('mitigasi-hazard-text').innerText = record.hazard;
+            
+            if(record.mitigasi) {
+                setCheckboxState('eliminasi', record.mitigasi.eliminasi);
+                setCheckboxState('rekayasa', record.mitigasi.rekayasa);
+                setCheckboxState('admin', record.mitigasi.admin);
+                setCheckboxState('apd', record.mitigasi.apd);
+                document.getElementById('mit-p').value = record.mitigasi.p;
+                document.getElementById('mit-s').value = record.mitigasi.s;
+                document.getElementById('mit-pic').value = record.mitigasi.pic;
+            } else {
+                setCheckboxState('eliminasi', '');
+                setCheckboxState('rekayasa', '');
+                setCheckboxState('admin', '');
+                setCheckboxState('apd', '');
+                document.getElementById('mit-p').value = "";
+                document.getElementById('mit-s').value = "";
+                document.getElementById('mit-pic').value = "";
+            }
+            window.scrollTo(0, 0);
+        }
+
+        function closeMitigasiForm() {
+            document.getElementById('mitigasi-form-container').classList.add('hidden');
+        }
+
+        async function generateAIKontrol() {
+            const id = document.getElementById('mitigasi-id-ref').value;
+            const record = hiradcRecords.find(r => r.id == id);
+            if(!record) return;
+
+            const loading = document.getElementById('ai-loading-kontrol');
+            loading.classList.remove('hidden');
+
+            let prompt = `Saya membutuhkan saran pengendalian risiko K3 di fasilitas kesehatan.
+Masalah/Bahaya: "${record.hazard}"
+Kategori: ${record.kategori}
+Dampak: ${record.dampak}
+Skor Awal: Peluang ${record.p}, Keparahan ${record.s}
+
+Berikan usulan mitigasi berdasarkan 4 level Hierarki Kontrol. 
+ATURAN PENGISIAN:
+1. Jika kontrol bisa diterapkan, tuliskan langkah spesifiknya.
+2. Jika level kontrol tersebut tidak memungkinkan atau tidak relevan diterapkan pada bahaya ini, WAJIB tulis "Tidak aplikatif karena [sebutkan alasan logis/medisnya]".
+
+Usulkan juga Skor Peluang dan Keparahan yang BARU (Residual Risk) setelah kontrol diterapkan, skor baru INI HARUS LEBIH KECIL atau sama dengan skor awal.
+Keluarkan HANYA dalam format JSON:
+{
+  "eliminasi": "saran eliminasi/substitusi",
+  "rekayasa": "saran rekayasa teknik / engineering",
+  "administrasi": "saran kontrol administrasi / SOP",
+  "apd": "saran alat pelindung diri",
+  "p_baru": 2,
+  "s_baru": 2
+}`;
+
+            if (systemContext) prompt = `REFERENSI ATURAN K3:\n${systemContext}\n\nTUGAS:\n${prompt}`;
+
+            try {
+                const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${apiKey}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" }})
+                });
+                const data = await response.json();
+                if(data.error) throw new Error(data.error.message);
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if(!text) throw new Error("No data");
+                let kontrol = JSON.parse(cleanJSON(text));
+
+                setCheckboxState('eliminasi', kontrol.eliminasi);
+                setCheckboxState('rekayasa', kontrol.rekayasa);
+                setCheckboxState('admin', kontrol.administrasi);
+                setCheckboxState('apd', kontrol.apd);
+
+                document.getElementById('mit-p').value = kontrol.p_baru || 1;
+                document.getElementById('mit-s').value = kontrol.s_baru || 1;
+                
+                loading.classList.add('hidden');
+                window.parent.postMessage({ type: 'API_SUCCESS' }, '*');
+            } catch (e) {
+                console.error("API Error:", e);
+                window.parent.postMessage({ type: 'API_ERROR', code: e.message }, '*');
+                showCustomAlert("Gagal memuat saran AI (Limit API). Sistem menggunakan mode simulasi.");
+                
+                // Fallback Simulasi
+                setCheckboxState('eliminasi', "Tidak aplikatif karena bahaya tidak dapat dihilangkan sepenuhnya dari proses.");
+                setCheckboxState('rekayasa', "Penggunaan alat bantu yang lebih ergonomis atau modifikasi ruangan.");
+                setCheckboxState('admin', "Pembuatan SOP baru, rotasi shift jaga, dan rambu peringatan.");
+                setCheckboxState('apd', "Penggunaan Sarung Tangan, Masker Medis, atau perlengkapan safety.");
+
+                document.getElementById('mit-p').value = Math.max(1, record.p - 2);
+                document.getElementById('mit-s').value = record.s;
+                loading.classList.add('hidden');
+            }
+        }
+
+        function saveMitigation() {
+            const id = document.getElementById('mitigasi-id-ref').value;
+            const record = hiradcRecords.find(r => r.id == id);
+            if(!record) return;
+
+            const p = parseInt(document.getElementById('mit-p').value);
+            const s = parseInt(document.getElementById('mit-s').value);
+
+            if(isNaN(p) || isNaN(s)) {
+                showCustomAlert("Masukkan target skor P dan S yang valid!");
+                return;
+            }
+
+            const getMitVal = (type) => {
+                const isChecked = document.getElementById(`check-${type}`).checked;
+                const textarea = document.getElementById(`mit-${type}`);
+                if(!isChecked) {
+                    // Jika tidak dicentang tapi punya teks alasan, simpan teksnya. Jika kosong, pakai default.
+                    return textarea.value.trim() !== "" ? textarea.value.trim() : "Tidak aplikatif.";
+                }
+                return textarea.value.trim() || "Tidak aplikatif.";
+            };
+
+            record.mitigasi = {
+                eliminasi: getMitVal('eliminasi'),
+                rekayasa: getMitVal('rekayasa'),
+                admin: getMitVal('admin'),
+                apd: getMitVal('apd'),
+                pic: document.getElementById('mit-pic').value.trim() || "K3RS / Koordinator K3",
+                p: p,
+                s: s,
+                score: p * s
+            };
+
+            closeMitigasiForm();
+            renderTables();
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        // ========================== FUNGSI UNDUH (DOWNLOAD) ==========================
+        // FUNGSI 1: UNDUH PDF (ASLI, TEXT-BASED, BISA DICOPY/SEARCH)
+        function downloadMasterPDF() {
+            if(hiradcRecords.length === 0) {
+                showCustomAlert("Belum ada data HIRADC untuk diunduh!");
+                return;
+            }
+
+            const facName = document.getElementById('facility-name').value || "NAMA FASILITAS KESEHATAN";
+            const { jsPDF } = window.jspdf;
+            
+            // Ukuran F4 Landscape (330 x 215 mm)
+            const doc = new jsPDF('landscape', 'mm', [330.2, 215.9]);
+
+            // Header Teks Dokumen
+            doc.setFontSize(16);
+            doc.setFont("helvetica", "bold");
+            doc.text(facName.toUpperCase(), doc.internal.pageSize.getWidth()/2, 15, { align: 'center' });
+            
+            doc.setFontSize(12);
+            doc.text("TIM KESEHATAN DAN KESELAMATAN KERJA (K3)", doc.internal.pageSize.getWidth()/2, 22, { align: 'center' });
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "italic");
+            doc.text("Laporan HIRADC / IBPRP (Identifikasi Bahaya, Penilaian Risiko & Pengendalian)", doc.internal.pageSize.getWidth()/2, 28, { align: 'center' });
+
+            // Menyiapkan Data Tabel
+            const tableBody = [...hiradcRecords].sort((a,b) => b.score - a.score).map(r => {
+                let mit = r.mitigasi;
+                return [
+                    `${r.kegiatan}\n\nUnit:\n${r.unit}`,
+                    `[${r.kategori}]\n${r.hazard}\n\nDampak:\n${r.dampak}`,
+                    r.p.toString(), 
+                    r.s.toString(), 
+                    r.score.toString(),
+                    mit ? mit.eliminasi : 'Belum diatur',
+                    mit ? mit.rekayasa : 'Belum diatur',
+                    mit ? mit.admin : 'Belum diatur',
+                    mit ? mit.apd : 'Belum diatur',
+                    mit ? mit.p.toString() : '-',
+                    mit ? mit.s.toString() : '-',
+                    mit ? mit.score.toString() : '-',
+                    mit ? mit.pic : '-'
+                ];
+            });
+
+            // Menggambar Tabel secara Native (Text-Based) menggunakan AutoTable
+            doc.autoTable({
+                startY: 35,
+                theme: 'grid',
+                head: [
+                    [
+                        { content: 'Unit & Kegiatan', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+                        { content: 'Hazard & Dampak', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+                        { content: 'Risiko Awal', colSpan: 3, styles: { halign: 'center' } },
+                        { content: 'Hierarki Pengendalian K3 (Mitigasi)', colSpan: 4, styles: { halign: 'center', fillColor: [30, 58, 138] } },
+                        { content: 'Risiko Sisa', colSpan: 3, styles: { halign: 'center' } },
+                        { content: 'PIC & Waktu', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+                    ],
+                    [
+                        { content: 'P', styles: { halign: 'center', cellWidth: 8 } },
+                        { content: 'S', styles: { halign: 'center', cellWidth: 8 } },
+                        { content: 'R', styles: { halign: 'center', cellWidth: 10 } },
+                        { content: 'Eliminasi / Substitusi', styles: { halign: 'center', fillColor: [37, 99, 235] } },
+                        { content: 'Rekayasa Teknik', styles: { halign: 'center', fillColor: [37, 99, 235] } },
+                        { content: 'Administrasi', styles: { halign: 'center', fillColor: [37, 99, 235] } },
+                        { content: 'APD', styles: { halign: 'center', fillColor: [37, 99, 235] } },
+                        { content: 'P', styles: { halign: 'center', cellWidth: 8 } },
+                        { content: 'S', styles: { halign: 'center', cellWidth: 8 } },
+                        { content: 'R', styles: { halign: 'center', cellWidth: 10 } }
+                    ]
+                ],
+                body: tableBody,
+                styles: { 
+                    fontSize: 7.5, 
+                    cellPadding: 3, 
+                    lineColor: [200, 200, 200],
+                    textColor: [40, 40, 40]
+                },
+                headStyles: { 
+                    fillColor: [51, 65, 85], 
+                    textColor: 255,
+                    fontSize: 8,
+                    lineWidth: 0.1
+                },
+                columnStyles: {
+                    0: { cellWidth: 35 },
+                    1: { cellWidth: 45 },
+                    2: { halign: 'center', cellWidth: 8 },
+                    3: { halign: 'center', cellWidth: 8 },
+                    4: { halign: 'center', cellWidth: 10, fontStyle: 'bold', textColor: [220, 38, 38] },
+                    9: { halign: 'center', cellWidth: 8 },
+                    10: { halign: 'center', cellWidth: 8 },
+                    11: { halign: 'center', cellWidth: 10, fontStyle: 'bold', textColor: [5, 150, 105] },
+                    12: { cellWidth: 25 }
+                },
+                didParseCell: function(data) {
+                    // Beri warna abu-abu italic jika isi sel mengandung kata "Tidak aplikatif"
+                    if (data.section === 'body' && (data.column.index >= 5 && data.column.index <= 8)) {
+                        if (data.cell.raw && data.cell.raw.toString().toLowerCase().includes('tidak aplikatif')) {
+                            data.cell.styles.textColor = [160, 160, 160];
+                            data.cell.styles.fontStyle = 'italic';
+                        }
+                    }
+                },
+                margin: { top: 10, right: 10, bottom: 15, left: 10 }
+            });
+
+            // Nomor Halaman (Footer)
+            const pageCount = doc.internal.getNumberOfPages();
+            for(let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "italic");
+                doc.setTextColor(150);
+                doc.text(
+                    'Dicetak melalui Dashboard SEHATI AI K3 - Halaman ' + i + ' dari ' + pageCount, 
+                    doc.internal.pageSize.getWidth() - 10, 
+                    doc.internal.pageSize.getHeight() - 8, 
+                    { align: 'right' }
+                );
+            }
+
+            // PERINTAH MURNI DOWNLOAD KE KOMPUTER
+            doc.save('Laporan_HIRADC_K3.pdf');
+        }
+
+        // FUNGSI 2: UNDUH EXCEL NATIVE (.xlsx)
+        function downloadEditableExcel() {
+            if(hiradcRecords.length === 0) {
+                showCustomAlert("Belum ada data HIRADC untuk diunduh!");
+                return;
+            }
+
+            const facName = document.getElementById('facility-name').value || "NAMA FASILITAS KESEHATAN";
+            const table = document.createElement('table');
+            
+            let html = `
+                <thead>
+                    <tr><th colspan="13" style="font-size: 16pt; font-weight: bold;">${facName}</th></tr>
+                    <tr><th colspan="13" style="font-size: 14pt; font-weight: bold;">TIM KESEHATAN DAN KESELAMATAN KERJA (K3)</th></tr>
+                    <tr><th colspan="13" style="font-size: 11pt; font-style: italic;">Laporan HIRADC / IBPRP (Identifikasi Bahaya, Penilaian Risiko & Pengendalian)</th></tr>
+                    <tr><th colspan="13"></th></tr>
+                    <tr>
+                        <th rowspan="2">Unit & Kegiatan</th>
+                        <th rowspan="2">Hazard & Dampak</th>
+                        <th colspan="3">Risiko Awal</th>
+                        <th colspan="4">Hierarki Pengendalian K3 (Mitigasi)</th>
+                        <th colspan="3">Risiko Sisa</th>
+                        <th rowspan="2">PIC & Waktu</th>
+                    </tr>
+                    <tr>
+                        <th>P</th><th>S</th><th>Skor</th>
+                        <th>Eliminasi / Substitusi</th><th>Rekayasa Teknik</th><th>Administrasi</th><th>APD</th>
+                        <th>P</th><th>S</th><th>Skor</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            [...hiradcRecords].sort((a,b) => b.score - a.score).forEach(r => {
+                let mit = r.mitigasi;
+                const kegiatanTeks = `${r.kegiatan} \n(${r.unit})`;
+                const hazardTeks = `[${r.kategori}] ${r.hazard} \nDampak: ${r.dampak}`;
+                
+                html += `
+                    <tr>
+                        <td>${kegiatanTeks}</td>
+                        <td>${hazardTeks}</td>
+                        <td>${r.p}</td>
+                        <td>${r.s}</td>
+                        <td>${r.score}</td>
+                        
+                        <td>${mit ? mit.eliminasi : '-'}</td>
+                        <td>${mit ? mit.rekayasa : '-'}</td>
+                        <td>${mit ? mit.admin : '-'}</td>
+                        <td>${mit ? mit.apd : '-'}</td>
+                        
+                        <td>${mit ? mit.p : '-'}</td>
+                        <td>${mit ? mit.s : '-'}</td>
+                        <td>${mit ? mit.score : '-'}</td>
+                        
+                        <td>${mit ? mit.pic : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody>`;
+            table.innerHTML = html;
+
+            const wb = XLSX.utils.table_to_book(table, {sheet: "Data_HIRADC"});
+            
+            // PERINTAH MURNI DOWNLOAD KE KOMPUTER
+            XLSX.writeFile(wb, "Laporan_HIRADC_K3.xlsx");
+        }
+
+        // BUKA TAB PERTAMA SAAT DIMUAT
+        window.onload = function() {
+            updateUnitDropdown();
+            switchTab('penjelasan');
+        };
+    </script>
+</body>
+</html>
