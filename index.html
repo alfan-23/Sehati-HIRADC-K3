@@ -49,8 +49,16 @@
                 <div class="flex flex-col">
                     <h1 class="text-2xl font-extrabold text-blue-400">SIM K3 - Digital HIRADC</h1>
                     <p class="text-xs text-slate-400 mt-1">Identifikasi Bahaya, Penilaian Risiko & Pengendalian</p>
-                    <div class="flex items-center gap-2 mt-2">
+                    <div class="flex flex-wrap items-center gap-2 mt-2">
                         <input type="text" id="facility-name" class="bg-slate-800 border border-slate-700 text-xs px-2 py-1 rounded text-white outline-none focus:border-blue-400" placeholder="Ketik Nama Fasyankes..." value="RS/Puskesmas/Klinik ">
+                        
+                        <button onclick="saveDraftTxt()" class="bg-blue-900 hover:bg-blue-800 text-blue-100 border border-blue-700 text-[10px] font-bold px-2 py-1 rounded transition-all shadow-sm flex items-center gap-1 ml-1" title="Simpan sementara ke TXT">
+                            💾 Simpan Draft
+                        </button>
+                        <label for="load-draft" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 text-[10px] font-bold px-2 py-1 rounded transition-all shadow-sm cursor-pointer flex items-center gap-1" title="Muat draft dari TXT">
+                            📂 Muat Draft
+                        </label>
+                        <input type="file" id="load-draft" accept=".txt" class="hidden" onchange="loadDraftTxt(event)">
                     </div>
                 </div>
                 <div class="flex overflow-x-auto gap-1 bg-slate-800 p-1 rounded-lg">
@@ -1363,6 +1371,67 @@ Keluarkan HANYA dalam format JSON:
             
             // PERINTAH MURNI DOWNLOAD KE KOMPUTER
             XLSX.writeFile(wb, "Laporan_HIRADC_K3.xlsx");
+        }
+
+        // ========================== FUNGSI SIMPAN/MUAT DRAFT (.TXT) ==========================
+        function saveDraftTxt() {
+            if(hiradcRecords.length === 0) {
+                showCustomAlert("Belum ada data untuk disimpan sebagai draft!");
+                return;
+            }
+            
+            const facName = document.getElementById('facility-name').value || "Fasyankes";
+            const draftData = {
+                facilityName: facName,
+                timestamp: new Date().toISOString(),
+                records: hiradcRecords
+            };
+            
+            // Konversi data ke string berformat JSON
+            const dataStr = JSON.stringify(draftData, null, 2);
+            
+            // Buat file Blob TXT
+            const blob = new Blob([dataStr], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            
+            // Eksekusi Download
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Draft_HIRADC_${facName.replace(/\s+/g, '_')}_${new Date().getTime()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function loadDraftTxt(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const contents = e.target.result;
+                    const draftData = JSON.parse(contents);
+                    
+                    if (draftData && draftData.records) {
+                        hiradcRecords = draftData.records;
+                        if (draftData.facilityName) {
+                            document.getElementById('facility-name').value = draftData.facilityName;
+                        }
+                        renderTables();
+                        showCustomAlert("✅ Draft HIRADC berhasil dimuat!");
+                    } else {
+                        showCustomAlert("Format file tidak valid atau struktur data rusak!");
+                    }
+                } catch (err) {
+                    showCustomAlert("Gagal membaca file. Pastikan file yang diunggah adalah file berformat .txt dari aplikasi ini.");
+                }
+                
+                // Reset value agar input file dapat menerima file yang sama berulang kali
+                event.target.value = '';
+            };
+            reader.readAsText(file);
         }
 
         // BUKA TAB PERTAMA SAAT DIMUAT
