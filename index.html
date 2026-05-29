@@ -196,7 +196,7 @@
                             <div id="ai-kegiatan-container" class="hidden mb-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-inner text-xs">
                                 <div id="ai-loading-kegiatan" class="hidden py-4 flex flex-col items-center justify-center text-center">
                                     <div class="dot-flashing mb-2"></div>
-                                    <span class="text-[9px] font-bold text-blue-700 animate-pulse mt-2 uppercase">AI Mencari Ide Kegiatan...</span>
+                                    <span class="text-[9px] font-bold text-blue-700 mt-2 uppercase">Sedang Menghubungi AI...</span>
                                 </div>
                                 <div id="ai-content-kegiatan" class="hidden">
                                     <p class="text-[9px] font-bold text-slate-500 uppercase mb-2">Pilih kegiatan rutin di bawah ini:</p>
@@ -235,7 +235,7 @@
                             <div id="ai-bahaya-container" class="hidden mb-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-inner text-xs">
                                 <div id="ai-loading-bahaya" class="hidden py-4 flex flex-col items-center justify-center text-center">
                                     <div class="dot-flashing mb-2"></div>
-                                    <span class="text-[9px] font-bold text-blue-700 animate-pulse mt-2 uppercase">AI Menganalisis Bahaya...</span>
+                                    <span class="text-[9px] font-bold text-blue-700 mt-2 uppercase">Sedang Menghubungi AI...</span>
                                 </div>
                                 <div id="ai-content-bahaya" class="hidden">
                                     <p class="text-[9px] font-bold text-slate-500 uppercase mb-2">Pilih salah satu saran AI di bawah:</p>
@@ -336,7 +336,7 @@
                 
                 <div id="ai-loading-kontrol" class="hidden py-4 flex flex-col items-center justify-center text-center mb-4">
                     <div class="dot-flashing mb-2"></div>
-                    <span class="text-[9px] font-bold text-blue-700 animate-pulse mt-2 uppercase">AI Merumuskan Pengendalian...</span>
+                    <span class="text-[9px] font-bold text-blue-700 mt-2 uppercase">Sedang Menghubungi AI...</span>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -445,9 +445,8 @@
             document.getElementById('custom-alert').classList.add('hidden');
         }
 
-        // --- INTEGRASI DASHBOARD SEHATI AI ---
         let apiKey = new URLSearchParams(window.location.search).get('key') || "";
-        let aiModel = new URLSearchParams(window.location.search).get('model') || "gemini-2.5-flash-preview-09-2025";
+        let aiModel = new URLSearchParams(window.location.search).get('model') || "gemini-2.5-flash";
         let systemContext = "";
         
         // --- VARIABEL KONTROL AUTO-RETRY ---
@@ -471,7 +470,7 @@
             }
             if (event.data.type === 'STOP_RETRY') {
                 isWaitingForRetry = false;
-                showCustomAlert("Sistem AI Dihentikan Sementara: Semua Slot API Key gagal limit. Sistem menggunakan mode simulasi.");
+                showCustomAlert("Sistem AI Dihentikan Sementara: Semua Slot API Key gagal. Sistem menggunakan mode simulasi.");
                 
                 // JALANKAN FALLBACK SIMULASI JIKA DASHBOARD SUDAH MENYERAH
                 if (fallbackFunction) {
@@ -481,7 +480,6 @@
             }
         });
         window.parent.postMessage({ type: 'REQUEST_CONFIG' }, '*');
-        // --------------------------------------
 
         // Global State
         let hiradcRecords = [];
@@ -586,12 +584,9 @@
             
             if(unitOptions[type]) {
                 unitOptions[type].forEach((u, index) => {
-                    // Jika tipe data adalah Object (Untuk PKM yang punya informasi Klaster)
                     if (typeof u === 'object') {
-                        // Nilai (value) hanya mengambil string unit yang bersih (Tanpa angka dan nama klaster)
                         select.innerHTML += `<option value="${u.unit}" data-klaster="${u.cluster}">${index + 1}. ${u.unit}</option>`;
                     } else {
-                        // Untuk RS & Klinik yang berupa array string biasa
                         select.innerHTML += `<option value="${u}">${index + 1}. ${u}</option>`;
                     }
                 });
@@ -615,7 +610,6 @@
             } else {
                 customText.classList.add('hidden');
                 
-                // Periksa atribut data-klaster dari opsi yang dipilih
                 if(select.selectedIndex > 0) {
                     const selectedOption = select.options[select.selectedIndex];
                     const klasterInfo = selectedOption.getAttribute('data-klaster');
@@ -659,15 +653,29 @@
             return text.replace(new RegExp('```json', 'gi'), '').replace(new RegExp('```', 'g'), '').trim();
         }
 
-        async function fetchWithRetry(url, options, retries = 5, backoff = 1000) {
+        async function fetchWithRetry(url, options, retries = 3, backoff = 1000) {
             for (let i = 0; i < retries; i++) {
                 try {
                     const res = await fetch(url, options);
                     if (res.ok) return res;
-                } catch (e) {}
+
+                    // BACA ERROR ASLI DARI GOOGLE DAN TAMPILKAN DI CONSOLE (F12)
+                    const errorData = await res.json().catch(() => ({}));
+                    console.error(`🚨 LOG ERROR GOOGLE (Model: ${aiModel}):`, errorData);
+
+                    if (res.status === 429) {
+                        throw new Error("LIMIT_API");
+                    } else {
+                        // Jika bukan karena limit (Misal 404 Model Not Found, 400 Bad Request)
+                        const errorMsg = errorData?.error?.message || `HTTP Error ${res.status}`;
+                        throw new Error(errorMsg); 
+                    }
+                } catch (e) {
+                    if (e.message !== "LIMIT_API") throw e; // Lempar error mematikan ini ke luar loop
+                    if (i === retries - 1) throw e;
+                }
                 await new Promise(r => setTimeout(r, backoff * Math.pow(2, i)));
             }
-            throw new Error("Gagal terhubung ke API AI");
         }
 
         function getRiskColor(score) {
@@ -699,7 +707,7 @@
             loading.classList.remove('hidden');
             content.classList.add('hidden');
             list.innerHTML = '';
-            document.querySelector('#ai-loading-kegiatan span').innerText = "AI Mencari Ide Kegiatan...";
+            document.querySelector('#ai-loading-kegiatan span').innerText = "Sedang Menghubungi AI...";
 
             let prompt = `Saya sedang menyusun dokumen K3 HIRADC di fasyankes tipe ${fasyankesType}.
 Unit Kerja yang dipilih: "${unit}"
@@ -740,6 +748,12 @@ Keluarkan HANYA dalam format JSON array seperti ini:
             } catch (e) {
                 console.error("API Error:", e);
                 
+                if (e.message !== "LIMIT_API") {
+                    showCustomAlert("Error Fatal dari Google:\n" + e.message + "\n\n(Silakan cek Console F12 untuk detailnya)");
+                    document.getElementById('ai-loading-kegiatan').classList.add('hidden');
+                    return;
+                }
+
                 // --- PENANGANAN AUTO-RETRY ---
                 lastFailedFunction = () => generateAIKegiatan();
                 isWaitingForRetry = true;
@@ -803,7 +817,7 @@ Keluarkan HANYA dalam format JSON array seperti ini:
             loading.classList.remove('hidden');
             content.classList.add('hidden');
             list.innerHTML = '';
-            document.querySelector('#ai-loading-bahaya span').innerText = "AI Menganalisis Bahaya...";
+            document.querySelector('#ai-loading-bahaya span').innerText = "Sedang Menghubungi AI...";
 
             let kategoriText = cat === "STUCK" ? "berbagai kategori (lintas kategori)" : `kategori bahaya ${cat}`;
 
@@ -851,15 +865,21 @@ Keluarkan HANYA dalam format JSON array seperti ini:
             } catch (e) {
                 console.error("API Error:", e);
                 
+                if (e.message !== "LIMIT_API") {
+                    showCustomAlert("Error Fatal dari Google:\n" + e.message + "\n\n(Silakan cek Console F12 untuk detailnya)");
+                    document.getElementById('ai-loading-bahaya').classList.add('hidden');
+                    return;
+                }
+
                 // --- PENANGANAN AUTO-RETRY ---
                 lastFailedFunction = () => generateAIBahaya();
                 isWaitingForRetry = true;
 
                 fallbackFunction = () => {
                     let ideas = [
-                        { kategori: "Biologi", hazard: "Terpapar cipratan darah atau tertusuk jarum suntik bekas (Simulasi Tanpa API)", dampak: "Infeksi penyakit menular (Hepatitis, HIV)", p: 4, s: 4 },
-                        { kategori: "Ergonomi", hazard: "Postur tubuh membungkuk berulang kali (Simulasi Tanpa API)", dampak: "Nyeri punggung bawah (Low Back Pain)", p: 5, s: 2 },
-                        { kategori: "Elektrik", hazard: "Kabel alat medis terkelupas dekat sumber air (Simulasi Tanpa API)", dampak: "Tersengat arus listrik (Luka bakar/henti jantung)", p: 3, s: 5 }
+                        { kategori: "Biologi", hazard: "Terpapar cipratan darah atau tertusuk jarum suntik bekas (Simulasi)", dampak: "Infeksi penyakit menular (Hepatitis, HIV)", p: 4, s: 4 },
+                        { kategori: "Ergonomi", hazard: "Postur tubuh membungkuk berulang kali (Simulasi)", dampak: "Nyeri punggung bawah (Low Back Pain)", p: 5, s: 2 },
+                        { kategori: "Elektrik", hazard: "Kabel alat medis terkelupas dekat sumber air (Simulasi)", dampak: "Tersengat arus listrik (Luka bakar/henti jantung)", p: 3, s: 5 }
                     ];
 
                     list.innerHTML = '';
@@ -1110,7 +1130,7 @@ Keluarkan HANYA dalam format JSON array seperti ini:
 
             const loading = document.getElementById('ai-loading-kontrol');
             loading.classList.remove('hidden');
-            document.querySelector('#ai-loading-kontrol span').innerText = "AI Merumuskan Pengendalian...";
+            document.querySelector('#ai-loading-kontrol span').innerText = "Sedang Menghubungi AI...";
 
             let prompt = `Saya membutuhkan saran pengendalian risiko K3 di fasilitas kesehatan.
 Masalah/Bahaya: "${record.hazard}"
@@ -1160,6 +1180,12 @@ Keluarkan HANYA dalam format JSON:
             } catch (e) {
                 console.error("API Error:", e);
                 
+                if (e.message !== "LIMIT_API") {
+                    showCustomAlert("Error Fatal dari Google:\n" + e.message + "\n\n(Silakan cek Console F12 untuk detailnya)");
+                    document.getElementById('ai-loading-kontrol').classList.add('hidden');
+                    return;
+                }
+
                 // --- PENANGANAN AUTO-RETRY ---
                 lastFailedFunction = () => generateAIKontrol();
                 isWaitingForRetry = true;
