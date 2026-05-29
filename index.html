@@ -449,6 +449,11 @@
         let apiKey = new URLSearchParams(window.location.search).get('key') || "";
         let aiModel = new URLSearchParams(window.location.search).get('model') || "gemini-2.5-flash-preview-09-2025";
         let systemContext = "";
+        
+        // --- VARIABEL KONTROL AUTO-RETRY ---
+        let isWaitingForRetry = false;
+        let lastFailedFunction = null;
+        let fallbackFunction = null;
 
         window.addEventListener('message', (event) => {
             if (!event.data || !event.data.type) return;
@@ -456,9 +461,23 @@
                 apiKey = event.data.key;
                 if(event.data.model) aiModel = event.data.model;
                 if(event.data.contextReference) systemContext = event.data.contextReference;
+                
+                // JIKA SEDANG MENUNGGU KEY BARU KARENA ERROR, JALANKAN ULANG FUNGSINYA
+                if (isWaitingForRetry && lastFailedFunction) {
+                    console.log("Mencoba ulang dengan Key baru...");
+                    isWaitingForRetry = false;
+                    lastFailedFunction();
+                }
             }
             if (event.data.type === 'STOP_RETRY') {
-                showCustomAlert("Sistem AI Dihentikan Sementara: Semua Slot API Key gagal. Periksa limit/kuota di Dashboard.");
+                isWaitingForRetry = false;
+                showCustomAlert("Sistem AI Dihentikan Sementara: Semua Slot API Key gagal limit. Sistem menggunakan mode simulasi.");
+                
+                // JALANKAN FALLBACK SIMULASI JIKA DASHBOARD SUDAH MENYERAH
+                if (fallbackFunction) {
+                    fallbackFunction();
+                    fallbackFunction = null;
+                }
             }
         });
         window.parent.postMessage({ type: 'REQUEST_CONFIG' }, '*');
@@ -680,6 +699,7 @@
             loading.classList.remove('hidden');
             content.classList.add('hidden');
             list.innerHTML = '';
+            document.querySelector('#ai-loading-kegiatan span').innerText = "AI Mencari Ide Kegiatan...";
 
             let prompt = `Saya sedang menyusun dokumen K3 HIRADC di fasyankes tipe ${fasyankesType}.
 Unit Kerja yang dipilih: "${unit}"
@@ -718,29 +738,37 @@ Keluarkan HANYA dalam format JSON array seperti ini:
                 window.parent.postMessage({ type: 'API_SUCCESS' }, '*');
 
             } catch (e) {
-                console.error("API Error, using fallback:", e);
+                console.error("API Error:", e);
+                
+                // --- PENANGANAN AUTO-RETRY ---
+                lastFailedFunction = () => generateAIKegiatan();
+                isWaitingForRetry = true;
+                
+                // Siapkan fallback jika semua slot benar-benar habis
+                fallbackFunction = () => {
+                    let ideas = [
+                        { kegiatan: "Melakukan anamnesis dan pemeriksaan fisik pasien (Simulasi)" },
+                        { kegiatan: "Membersihkan ruangan dan membuang limbah infeksius (Simulasi)" },
+                        { kegiatan: "Mengangkat/memindahkan barang berat atau pasien (Simulasi)" }
+                    ];
+                    
+                    list.innerHTML = '';
+                    ideas.forEach(item => {
+                        const escKegiatan = escapeJS(item.kegiatan);
+                        list.innerHTML += `
+                            <li class="cursor-pointer bg-white p-2 rounded border border-blue-200 hover:bg-yellow-100 transition-colors flex items-center gap-2" onclick="selectAIKegiatan('${escKegiatan}')">
+                                <span class="text-orange-500 font-bold">⚠️</span>
+                                <span class="font-medium text-slate-700 leading-tight">${item.kegiatan}</span>
+                            </li>`;
+                    });
+
+                    loading.classList.add('hidden');
+                    content.classList.remove('hidden');
+                };
+
+                // Kirim pesan error ke dashboard dan ubah teks status
                 window.parent.postMessage({ type: 'API_ERROR', code: e.message }, '*');
-                
-                showCustomAlert("Gagal memuat saran AI (Limit API). Sistem menggunakan mode simulasi.");
-                
-                // Fallback Simulasi
-                let ideas = [
-                    { kegiatan: "Melakukan anamnesis dan pemeriksaan fisik pasien (Simulasi)" },
-                    { kegiatan: "Membersihkan ruangan dan membuang limbah infeksius (Simulasi)" },
-                    { kegiatan: "Mengangkat/memindahkan barang berat atau pasien (Simulasi)" }
-                ];
-
-                ideas.forEach(item => {
-                    const escKegiatan = escapeJS(item.kegiatan);
-                    list.innerHTML += `
-                        <li class="cursor-pointer bg-white p-2 rounded border border-blue-200 hover:bg-yellow-100 transition-colors flex items-center gap-2" onclick="selectAIKegiatan('${escKegiatan}')">
-                            <span class="text-orange-500 font-bold">⚠️</span>
-                            <span class="font-medium text-slate-700 leading-tight">${item.kegiatan}</span>
-                        </li>`;
-                });
-
-                loading.classList.add('hidden');
-                content.classList.remove('hidden');
+                document.querySelector('#ai-loading-kegiatan span').innerText = "LIMIT API: MENCARI KUNCI CADANGAN...";
             }
         }
 
@@ -775,6 +803,7 @@ Keluarkan HANYA dalam format JSON array seperti ini:
             loading.classList.remove('hidden');
             content.classList.add('hidden');
             list.innerHTML = '';
+            document.querySelector('#ai-loading-bahaya span').innerText = "AI Menganalisis Bahaya...";
 
             let kategoriText = cat === "STUCK" ? "berbagai kategori (lintas kategori)" : `kategori bahaya ${cat}`;
 
@@ -820,33 +849,39 @@ Keluarkan HANYA dalam format JSON array seperti ini:
                 window.parent.postMessage({ type: 'API_SUCCESS' }, '*');
 
             } catch (e) {
-                console.error("API Error, using fallback:", e);
+                console.error("API Error:", e);
+                
+                // --- PENANGANAN AUTO-RETRY ---
+                lastFailedFunction = () => generateAIBahaya();
+                isWaitingForRetry = true;
+
+                fallbackFunction = () => {
+                    let ideas = [
+                        { kategori: "Biologi", hazard: "Terpapar cipratan darah atau tertusuk jarum suntik bekas (Simulasi Tanpa API)", dampak: "Infeksi penyakit menular (Hepatitis, HIV)", p: 4, s: 4 },
+                        { kategori: "Ergonomi", hazard: "Postur tubuh membungkuk berulang kali (Simulasi Tanpa API)", dampak: "Nyeri punggung bawah (Low Back Pain)", p: 5, s: 2 },
+                        { kategori: "Elektrik", hazard: "Kabel alat medis terkelupas dekat sumber air (Simulasi Tanpa API)", dampak: "Tersengat arus listrik (Luka bakar/henti jantung)", p: 3, s: 5 }
+                    ];
+
+                    list.innerHTML = '';
+                    ideas.forEach(item => {
+                        const escHazard = escapeJS(item.hazard);
+                        const escDampak = escapeJS(item.dampak);
+                        const escKat = escapeJS(item.kategori);
+                        
+                        list.innerHTML += `
+                            <li class="cursor-pointer bg-white p-2 rounded border border-blue-200 hover:bg-yellow-100 transition-colors flex flex-col" onclick="selectAIBahaya('${escKat}', '${escHazard}', '${escDampak}', ${item.p}, ${item.s})">
+                                <span class="font-bold text-blue-800 leading-tight mb-1">⚠️ ${item.hazard}</span>
+                                <span class="text-[10px] text-slate-600">Dampak: ${item.dampak}</span>
+                                <span class="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Kategori: ${item.kategori} | Skor: P${item.p} S${item.s}</span>
+                            </li>`;
+                    });
+
+                    loading.classList.add('hidden');
+                    content.classList.remove('hidden');
+                };
+
                 window.parent.postMessage({ type: 'API_ERROR', code: e.message }, '*');
-                
-                showCustomAlert("Gagal memuat saran AI (Limit API). Sistem menggunakan mode simulasi.");
-                
-                // Fallback Simulasi
-                let ideas = [
-                    { kategori: "Biologi", hazard: "Terpapar cipratan darah atau tertusuk jarum suntik bekas (Simulasi Tanpa API)", dampak: "Infeksi penyakit menular (Hepatitis, HIV)", p: 4, s: 4 },
-                    { kategori: "Ergonomi", hazard: "Postur tubuh membungkuk berulang kali (Simulasi Tanpa API)", dampak: "Nyeri punggung bawah (Low Back Pain)", p: 5, s: 2 },
-                    { kategori: "Elektrik", hazard: "Kabel alat medis terkelupas dekat sumber air (Simulasi Tanpa API)", dampak: "Tersengat arus listrik (Luka bakar/henti jantung)", p: 3, s: 5 }
-                ];
-
-                ideas.forEach(item => {
-                    const escHazard = escapeJS(item.hazard);
-                    const escDampak = escapeJS(item.dampak);
-                    const escKat = escapeJS(item.kategori);
-                    
-                    list.innerHTML += `
-                        <li class="cursor-pointer bg-white p-2 rounded border border-blue-200 hover:bg-yellow-100 transition-colors flex flex-col" onclick="selectAIBahaya('${escKat}', '${escHazard}', '${escDampak}', ${item.p}, ${item.s})">
-                            <span class="font-bold text-blue-800 leading-tight mb-1">⚠️ ${item.hazard}</span>
-                            <span class="text-[10px] text-slate-600">Dampak: ${item.dampak}</span>
-                            <span class="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Kategori: ${item.kategori} | Skor: P${item.p} S${item.s}</span>
-                        </li>`;
-                });
-
-                loading.classList.add('hidden');
-                content.classList.remove('hidden');
+                document.querySelector('#ai-loading-bahaya span').innerText = "LIMIT API: MENCARI KUNCI CADANGAN...";
             }
         }
 
@@ -1075,6 +1110,7 @@ Keluarkan HANYA dalam format JSON array seperti ini:
 
             const loading = document.getElementById('ai-loading-kontrol');
             loading.classList.remove('hidden');
+            document.querySelector('#ai-loading-kontrol span').innerText = "AI Merumuskan Pengendalian...";
 
             let prompt = `Saya membutuhkan saran pengendalian risiko K3 di fasilitas kesehatan.
 Masalah/Bahaya: "${record.hazard}"
@@ -1123,18 +1159,24 @@ Keluarkan HANYA dalam format JSON:
                 window.parent.postMessage({ type: 'API_SUCCESS' }, '*');
             } catch (e) {
                 console.error("API Error:", e);
-                window.parent.postMessage({ type: 'API_ERROR', code: e.message }, '*');
-                showCustomAlert("Gagal memuat saran AI (Limit API). Sistem menggunakan mode simulasi.");
                 
-                // Fallback Simulasi
-                setCheckboxState('eliminasi', "Tidak aplikatif karena bahaya tidak dapat dihilangkan sepenuhnya dari proses.");
-                setCheckboxState('rekayasa', "Penggunaan alat bantu yang lebih ergonomis atau modifikasi ruangan.");
-                setCheckboxState('admin', "Pembuatan SOP baru, rotasi shift jaga, dan rambu peringatan.");
-                setCheckboxState('apd', "Penggunaan Sarung Tangan, Masker Medis, atau perlengkapan safety.");
+                // --- PENANGANAN AUTO-RETRY ---
+                lastFailedFunction = () => generateAIKontrol();
+                isWaitingForRetry = true;
 
-                document.getElementById('mit-p').value = Math.max(1, record.p - 2);
-                document.getElementById('mit-s').value = record.s;
-                loading.classList.add('hidden');
+                fallbackFunction = () => {
+                    setCheckboxState('eliminasi', "Tidak aplikatif karena bahaya tidak dapat dihilangkan sepenuhnya dari proses.");
+                    setCheckboxState('rekayasa', "Penggunaan alat bantu yang lebih ergonomis atau modifikasi ruangan.");
+                    setCheckboxState('admin', "Pembuatan SOP baru, rotasi shift jaga, dan rambu peringatan.");
+                    setCheckboxState('apd', "Penggunaan Sarung Tangan, Masker Medis, atau perlengkapan safety.");
+
+                    document.getElementById('mit-p').value = Math.max(1, record.p - 2);
+                    document.getElementById('mit-s').value = record.s;
+                    loading.classList.add('hidden');
+                };
+
+                window.parent.postMessage({ type: 'API_ERROR', code: e.message }, '*');
+                document.querySelector('#ai-loading-kontrol span').innerText = "LIMIT API: MENCARI KUNCI CADANGAN...";
             }
         }
 
